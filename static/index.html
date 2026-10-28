@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChurnSense AI</title>
+<style>
+  :root{--bg1:#0b1020;--bg2:#1a1040;--accent:#7df9ff;--accent2:#ff7ad9;--text:#eaf0ff;--glass:rgba(255,255,255,.07);--border:rgba(255,255,255,.15)}
+  [data-theme="sunset"]{--bg1:#2b0a1f;--bg2:#5a1a2e;--accent:#ffb86b;--accent2:#ff5e7e}
+  [data-theme="forest"]{--bg1:#07201a;--bg2:#0f3b2e;--accent:#8dffb0;--accent2:#f6ff7a}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{min-height:100vh;font-family:"Segoe UI",system-ui,sans-serif;color:var(--text);background:radial-gradient(circle at 20% 20%,var(--bg2),var(--bg1) 70%);background-attachment:fixed;transition:background .6s}
+  body.loading{overflow:hidden}
+  canvas{position:fixed;inset:0;z-index:0}
+  .grad{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  /* Loader */
+  #loader{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:radial-gradient(circle at 20% 20%,var(--bg2),var(--bg1) 70%);transition:opacity .7s,visibility .7s}
+  #loader.done{opacity:0;visibility:hidden}
+  .ring{width:90px;height:90px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--accent);border-right-color:var(--accent2);animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .brand{font-size:clamp(1.8rem,7vw,2.6rem);font-weight:700;letter-spacing:2px}
+  .bar{width:min(80vw,320px);height:6px;border-radius:99px;background:var(--glass);border:1px solid var(--border);overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .2s}
+  #status{font-size:.85rem;opacity:.7;min-height:1.2em}
+  /* Layout */
+  header{position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:14px 5vw;background:rgba(11,16,32,.45);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
+  header b{font-size:1.15rem}
+  nav{display:flex;gap:8px;flex-wrap:wrap}
+  button{cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text);padding:9px 16px;border-radius:999px;font-size:.85rem;font-family:inherit;transition:all .25s}
+  button:hover,button.on{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#0b1020;border-color:transparent;transform:translateY(-2px)}
+  main{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:32px 5vw 80px}
+  section{display:none}section.show{display:block;animation:fade .5s}
+  @keyframes fade{from{opacity:0;transform:translateY(12px)}}
+  .card{background:var(--glass);border:1px solid var(--border);border-radius:24px;padding:28px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+  .hero{text-align:center;padding:44px 28px}
+  .hero h1{font-size:clamp(1.5rem,5vw,2.4rem);line-height:1.25;margin-bottom:14px}
+  .hero p{opacity:.75;max-width:640px;margin:0 auto 22px;line-height:1.6}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:20px}
+  .stat b{display:block;font-size:1.9rem}
+  .stat span{font-size:.8rem;opacity:.7}
+  h2{margin-bottom:16px}
+  label{display:block;font-size:.8rem;opacity:.75;margin:12px 0 4px}
+  input,select{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text);font-family:inherit}
+  select option{color:#000}
+  .form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 16px}
+  .result{margin-top:22px;text-align:center;display:none}
+  .result .pct{font-size:3rem;font-weight:700}
+  .meter{height:10px;border-radius:99px;background:var(--glass);border:1px solid var(--border);overflow:hidden;margin:12px 0}
+  .meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .8s}
+  table{width:100%;border-collapse:collapse;font-size:.88rem}
+  th,td{padding:10px 8px;text-align:left;border-bottom:1px solid var(--border)}
+  th{opacity:.7;font-weight:600}tr.best td{font-weight:700}
+  .wrap{overflow-x:auto}
+  .note{font-size:.75rem;opacity:.55;margin-top:14px}
+</style>
+</head>
+<body class="loading">
+<canvas id="sky"></canvas>
+
+<div id="loader">
+  <div class="ring"></div>
+  <div class="brand grad">ChurnSense AI</div>
+  <div class="bar"><i id="fill"></i></div>
+  <div id="status">Initialising…</div>
+</div>
+
+<header>
+  <b class="grad">ChurnSense AI</b>
+  <nav>
+    <button data-tab="home" class="on">Home</button>
+    <button data-tab="predict">Predict</button>
+    <button data-tab="results">Results</button>
+    <button id="themeBtn">Theme</button>
+  </nav>
+</header>
+
+<main>
+  <section id="home" class="show">
+    <div class="card hero">
+      <h1 class="grad">TELECOM AI INTELLIGENCE</h1>
+      <p>Generate Smarter Data. Predict Customer Churn. Discover AI-Driven Insights.</p>
+      <button data-tab="predict">Try the predictor</button>
+    </div>
+    <div class="grid">
+      <div class="card stat"><b class="grad">7,043</b><span>Original records</span></div>
+      <div class="card stat"><b class="grad">6,589</b><span>Records kept</span></div>
+      <div class="card stat"><b class="grad">0.764</b><span>Best F1 (FT-Transformer)</span></div>
+      <div class="card stat"><b class="grad">0.932</b><span>Best ROC-AUC</span></div>
+    </div>
+  </section>
+
+  <section id="predict">
+    <div class="card">
+      <h2>Customer churn predictor</h2>
+      <div class="form" id="form"></div>
+      <p style="margin-top:20px"><button id="predictBtn">Predict churn</button></p>
+      <div class="result" id="result">
+        <div class="pct grad" id="pct">0%</div>
+        <div class="meter"><i id="meter"></i></div>
+        <div id="label"></div>
+      </div>
+      <p class="note">Scored by your FT-Transformer through the FastAPI <code>/predict</code> endpoint. Total Charges, Revenue, AverageMonthlySpend and TenureGroup are derived on the server.</p>
+    </div>
+  </section>
+
+  <section id="results">
+    <div class="card">
+      <h2>Model comparison (test set)</h2>
+      <div class="wrap"><table>
+        <tr><th>Model</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1</th><th>ROC-AUC</th></tr>
+        <tr class="best"><td>FT-Transformer</td><td>0.860</td><td>0.735</td><td>0.794</td><td>0.764</td><td>0.932</td></tr>
+        <tr><td>CatBoost + CTGAN</td><td>–</td><td>–</td><td>–</td><td>0.759</td><td>0.927</td></tr>
+      </table></div>
+      <p class="note">Split 60/20/20 stratified. Generators compared: CTGAN, TVAE, WGAN-GP; CTGAN chosen for augmentation. Add the remaining models' rows as needed.</p>
+    </div>
+  </section>
+</main>
+
+<script>
+  // ---------- Loader ----------
+  const fill = document.getElementById('fill'), status = document.getElementById('status');
+  const steps = ['Loading models…', 'Preparing CTGAN data…', 'Warming up the API…', 'Ready'];
+  let p = 0;
+  const load = setInterval(() => {
+    p = Math.min(100, p + Math.random() * 12 + 4);
+    fill.style.width = p + '%';
+    status.textContent = steps[Math.min(3, Math.floor(p / 26))];
+    if (p >= 100) {
+      clearInterval(load);
+      setTimeout(() => {
+        document.getElementById('loader').classList.add('done');
+        document.body.classList.remove('loading');
+      }, 400);
+    }
+  }, 220);
+
+  // ---------- Tabs ----------
+  const buttons = document.querySelectorAll('[data-tab]');
+  function show(id) {
+    document.querySelectorAll('section').forEach(s => s.classList.toggle('show', s.id === id));
+    document.querySelectorAll('nav [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === id));
+    scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  buttons.forEach(b => b.onclick = () => show(b.dataset.tab));
+
+  // ---------- Theme ----------
+  const themes = ['default', 'sunset', 'forest']; let ti = 0;
+  document.getElementById('themeBtn').onclick = () => {
+    ti = (ti + 1) % themes.length;
+    document.documentElement.setAttribute('data-theme', themes[ti]);
+    setTimeout(readColors, 650);
+  };
+
+  // ---------- Predict (FT-Transformer via FastAPI) ----------
+  const CATS = {"Gender": ["Male", "Female"], "Married": ["No", "Yes"], "Offer": ["No Offer", "Offer A", "Offer B", "Offer E", "Offer C", "Offer D"], "Phone Service": ["No", "Yes"], "Multiple Lines": ["No", "Yes"], "Internet Service": ["Yes", "No"], "Internet Type": ["Cable", "No Internet", "Fiber Optic", "DSL"], "Online Security": ["Yes", "No"], "Online Backup": ["No", "Yes"], "Device Protection Plan": ["No", "Yes"], "Premium Tech Support": ["Yes", "No"], "Streaming TV": ["No", "Yes"], "Streaming Movies": ["No", "Yes"], "Streaming Music": ["No", "Yes"], "Unlimited Data": ["Yes", "No"], "Contract": ["Two Year", "One Year", "Month-to-Month"], "Paperless Billing": ["No", "Yes"], "Payment Method": ["Credit Card", "Bank Withdrawal", "Mailed Check"]};
+  const NUMS = [["Age", 35], ["Number of Dependents", 0], ["Number of Referrals", 0], ["Tenure in Months", 12], ["Avg Monthly Long Distance Charges", 20], ["Avg Monthly GB Download", 20], ["Monthly Charge", 75], ["Total Refunds", 0], ["Total Extra Data Charges", 0], ["Total Long Distance Charges", 0]];
+  const formEl = document.getElementById('form');
+  formEl.innerHTML = NUMS.map(([k,v]) => `<div><label>${k}</label><input data-k="${k}" type="number" step="any" min="0" value="${v}"></div>`).join('') +
+    Object.entries(CATS).map(([k,o]) => `<div><label>${k}</label><select data-k="${k}">${o.map(x => `<option>${x}</option>`).join('')}</select></div>`).join('');
+  document.getElementById('predictBtn').onclick = async () => {
+    const d = {};
+    formEl.querySelectorAll('[data-k]').forEach(el => d[el.dataset.k] = el.tagName === 'INPUT' ? +el.value : el.value);
+    d['Total Long Distance Charges'] = d['Total Long Distance Charges'] || d['Avg Monthly Long Distance Charges'] * d['Tenure in Months'];
+    const label = document.getElementById('label');
+    document.getElementById('result').style.display = 'block';
+    try {
+      const r = await fetch('/predict', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.detail || 'Request failed');
+      const pct = Math.round(j.probability * 100);
+      document.getElementById('pct').textContent = pct + '%';
+      document.getElementById('meter').style.width = pct + '%';
+      label.textContent = j.churn ? 'Likely to churn' : 'Likely to stay';
+    } catch (e) { label.textContent = 'Error: ' + e.message; }
+  };
+
+  // ---------- Constellation canvas ----------
+  const canvas = document.getElementById('sky'), ctx = canvas.getContext('2d');
+  let W, H, stars = [], colorA = '#7df9ff', colorB = '#ff7ad9';
+  const mouse = { x: -9999, y: -9999 };
+  function readColors() {
+    const s = getComputedStyle(document.documentElement);
+    colorA = s.getPropertyValue('--accent').trim();
+    colorB = s.getPropertyValue('--accent2').trim();
+  }
+  function resize() { W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
+  addEventListener('resize', resize); resize();
+  function makeStar(x, y) {
+    return { x: x ?? Math.random() * W, y: y ?? Math.random() * H,
+      vx: (Math.random() - .5) * .6, vy: (Math.random() - .5) * .6,
+      r: Math.random() * 1.8 + .6, hue: Math.random() < .5 };
+  }
+  const count = Math.min(120, Math.floor(innerWidth * innerHeight / 12000));
+  for (let i = 0; i < count; i++) stars.push(makeStar());
+  addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+  addEventListener('mouseleave', () => { mouse.x = mouse.y = -9999; });
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    for (const s of stars) {
+      const dx = mouse.x - s.x, dy = mouse.y - s.y, d = Math.hypot(dx, dy);
+      if (d < 160) { s.vx += dx / d * .02; s.vy += dy / d * .02; }
+      s.vx *= .995; s.vy *= .995; s.x += s.vx; s.y += s.vy;
+      if (s.x < 0 || s.x > W) s.vx *= -1;
+      if (s.y < 0 || s.y > H) s.vy *= -1;
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = s.hue ? colorA : colorB;
+      ctx.shadowBlur = 8; ctx.shadowColor = ctx.fillStyle; ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+    for (let i = 0; i < stars.length; i++) for (let j = i + 1; j < stars.length; j++) {
+      const a = stars[i], b = stars[j], dist = Math.hypot(a.x - b.x, a.y - b.y);
+      if (dist < 110) {
+        ctx.globalAlpha = (1 - dist / 110) * .5; ctx.strokeStyle = colorA; ctx.lineWidth = .7;
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(draw);
+  }
+  readColors(); draw();
+</script>
+</body>
+</html>

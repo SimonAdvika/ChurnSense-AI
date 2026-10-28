@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pydantic
+numpy
+pandas
+scikit-learn==1.6.1
+joblib
+torch
+pytorch-tabnet

@@ -1,0 +1,64 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# IDE settings
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Data files - review before committing
+# Uncomment if you want to exclude all CSV files
+# *.csv
+
+# Private datasets
+data/private/
+data/raw/
+
+# Model training checkpoints
+*.ckpt
+*.weights.h5
+
+# Build files
+build/
+dist/
+*.egg-info/
+
+# Optional: generated model artifacts
+# Uncomment only if you do not want to upload model files
+# *.keras
+# *.pkl
+
+# Local environment configuration
+.streamlit/secrets.toml
